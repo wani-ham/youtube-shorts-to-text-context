@@ -1,0 +1,30 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.wani-ham/video-to-context",
+  "title": "Video to Context",
+  "description": "Turn short videos into timestamped text for LLMs: speech, on-screen text, and visual context.",
+  "repository": {
+    "url": "https://github.com/wani-ham/youtube-shorts-to-text-context",
+    "source": "github"
+  },
+  "version": "0.5.2",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "video-to-context",
+      "version": "0.5.2",
+      "runtimeHint": "uvx",
+      "transport": { "type": "stdio" },
+      "packageArguments": [
+        { "type": "positional", "value": "mcp" }
+      ],
+      "environmentVariables": [
+        { "name": "ANTHROPIC_API_KEY", "description": "Optional Claude API key for visual analysis.", "isRequired": false, "isSecret": true },
+        { "name": "VISION_BASE_URL", "description": "Optional OpenAI-compatible vision endpoint, such as Ollama or Gemini.", "isRequired": false },
+        { "name": "VISION_API_KEY", "description": "Optional API key for the OpenAI-compatible endpoint.", "isRequired": false, "isSecret": true },
+        { "name": "VISION_MODEL", "description": "Vision model name. Required with VISION_BASE_URL.", "isRequired": false },
+        { "name": "VIDEO_TEXT_ALLOWED_DIRS", "description": "Optional folders the server may read local videos from.", "isRequired": false }
+      ]
+    }
+  ]
+}

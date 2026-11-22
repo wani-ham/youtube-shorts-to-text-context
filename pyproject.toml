@@ -44,7 +44,7 @@ dependencies = [
 dev = ["jiwer>=4,<5", "pytest>=9,<10"]
 
 [project.scripts]
-video-to-context = "video_to_context.run:main"
+video-to-context = "video_to_context.cli:main"
 video-to-context-mcp = "video_to_context.mcp_server:main"
 
 [project.urls]

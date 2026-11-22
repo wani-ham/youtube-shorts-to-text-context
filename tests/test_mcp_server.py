@@ -119,6 +119,27 @@ def write_record(store: Path) -> None:
     }), encoding="utf-8")
 
 
+def test_cli_routes_mcp_subcommand(monkeypatch):
+    from video_to_context import cli
+
+    calls = []
+    monkeypatch.setattr(app, "main", lambda: calls.append("mcp"))
+    assert cli.main(["mcp"]) == 0
+    assert calls == ["mcp"]
+
+
+def test_server_manifest_matches_package():
+    from video_to_context import __version__
+
+    root = Path(__file__).parent.parent
+    manifest = json.loads((root / "server.json").read_text(encoding="utf-8"))
+    package = manifest["packages"][0]
+    assert manifest["version"] == package["version"] == __version__
+    assert len(manifest["description"]) <= 100
+    readme = (root / "README.md").read_text(encoding="utf-8")
+    assert f"<!-- mcp-name: {manifest['name']} -->" in readme
+
+
 def test_tools_over_mcp_protocol(tmp_path, monkeypatch):
     monkeypatch.setenv("VIDEO_TEXT_STORE", str(tmp_path))
     monkeypatch.delenv("VIDEO_TEXT_ALLOWED_DIRS", raising=False)
