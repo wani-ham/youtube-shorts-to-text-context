@@ -302,6 +302,43 @@ def test_continuation_cannot_extend_a_shot_into_another_setting(tmp_path):
         ("A studio interview.", 2, 3.5)]
 
 
+def test_near_identical_shots_merge_only_within_a_setting(tmp_path):
+    samples = [visual.Sample(i, i + 0.5, tmp_path / f"{i}.jpg", None, None, scene=i)
+               for i in range(5)]
+    scene = lambda number, text: vision.SceneDescription(
+        scene=number, description=text, continues_previous=False)
+    setting = lambda text, first, last: vision.SettingReport(description=text, frame_ranges=[
+        vision.FrameRange(first_frame=first, last_frame=last)])
+    result = vision.to_result(vision.FrameAnalysis(
+        visual_summary="s", footage_type="mixed", footage_basis="b", source_footage="multiple",
+        settings=[setting("Studio", 1, 4), setting("Street", 5, 5)],
+        editing_techniques=[], editing_notes="", overlays=[], captions=[],
+        scenes=[
+            scene(1, "A man in a dark suit and blue tie sits in a studio set."),
+            scene(2, "The man in the dark suit leans slightly forward in the studio set."),
+            scene(3, "The man in the dark suit keeps speaking, often with his eyes lowered."),
+            scene(4, "A woman hands the man in the dark suit a document."),
+            scene(5, "The man in the dark suit sits in a street."),
+        ],
+    ), vision.group_scenes(samples, 30), tmp_path)
+    assert [(d.start, d.end) for d in result.descriptions] == [(0, 2.5), (3, 3.5), (4, 4.5)]
+
+
+@pytest.mark.parametrize("previous, current, expected", [
+    ("A man speaks in a studio.", "The man keeps speaking, eyes lowered.", True),
+    ("A man speaks in a studio.", "The man punches a reporter.", False),
+    ("A man speaks in a studio.", "A chart appears beside the man.", False),
+    ("A man speaks in a studio.", "", False),
+])
+def test_minor_detail_rule(previous, current, expected):
+    assert vision.adds_only_minor_detail(previous, current) is expected
+
+
+def test_prompt_guards_against_inferred_events_and_false_templates():
+    assert "Never infer a place or event" in vision.SYSTEM_PROMPT
+    assert "A logo, watermark, or captions alone are not a template" in vision.SYSTEM_PROMPT
+
+
 def test_split_missed_cuts_ignores_fixed_template_and_small_motion():
     def picture(level, offset=0):
         pixels = np.full((480, 270), 40, dtype=np.int16)  # Fixed template.

@@ -57,7 +57,13 @@ You need [uv](https://docs.astral.sh/uv/), **ffmpeg**, and about 5 GB of free di
 uv tool install --python 3.12 video-to-context
 ```
 
-If the command isn't found afterwards, run `uv tool update-shell` and open a new terminal. You can also use `pip install video-to-context` inside a Python 3.12 environment.
+Add uv's tools to your PATH, then **open a new terminal**:
+
+```bash
+uv tool update-shell
+```
+
+You can also use `pip install video-to-context` inside a Python 3.12 environment.
 
 ### 3. Choose a vision model (optional)
 
@@ -283,6 +289,7 @@ If one stage fails, the others still finish and the record is marked `partial`.
 | `vision_auth_failed` | The API key is wrong or expired. |
 | `vision_invalid_output` | The model didn't return usable JSON. Try a more capable model. |
 | Out of memory with Ollama | Lower `VISION_MAX_FRAMES` or use a smaller model. |
+| `command not found: video-to-context` | Run `uv tool update-shell`, then open a new terminal. |
 | MCP tools don't appear | Use the full path from `command -v video-to-context-mcp`, then restart the client. |
 | `vision_timeout` | Raise `VISION_TIMEOUT_S`, or set `VISION_REASONING_EFFORT=none`. |
 | `objc: Class AVF... is implemented in both` | A harmless macOS warning from two video libraries. |

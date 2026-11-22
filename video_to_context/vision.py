@@ -4,6 +4,7 @@ import base64
 import io
 import json
 import os
+import re
 from collections import Counter
 from dataclasses import dataclass, replace
 from itertools import groupby
@@ -25,6 +26,10 @@ from .visual import Sample, merge_ocr
 SYSTEM_PROMPT = """You analyse keyframes from a short video for downstream AI services. \
 Frames are numbered and grouped into numbered scenes. Report only what is clearly visible.
 
+Never infer a place or event from weak cues. Do not say indoors, outdoors, rally, protest, \
+speech, conference, or similar unless the frame clearly shows it. A microphone does not \
+prove an event, and a blurred or plain background should be described only as that.
+
 visual_summary: two or three factual English sentences on what the video shows as a whole \
 and how it is put together, in the order the settings actually appear. Say a video \
 alternates only if a setting really returns. Do not retell the speech.
@@ -41,8 +46,10 @@ different recordings, "single" if it looks like one recording, otherwise "unclea
 settings: each distinct place or look, described once, with every frame range where it \
 appears. A setting that returns later is one setting with several ranges.
 
-editing_techniques: only techniques clearly visible across the frames. editing_notes: one \
-short sentence on how they are used, or an empty string if there is nothing notable.
+editing_techniques: only techniques clearly visible across the frames. Use templated_frame \
+only for a fixed decorative border, background, or layout surrounding the footage in most \
+frames. A logo, watermark, or captions alone are not a template. editing_notes: one short \
+sentence on how the techniques are used, or an empty string if there is nothing notable.
 
 overlays: text or marks that stay on screen across many frames, such as a fixed headline, \
 channel watermark, or logo. Report each once, with its first and last frame.
@@ -57,7 +64,8 @@ appearance, actions, and objects. Mention charts, screenshots, documents, or new
 layouts. Do not mention subtitles or overlays, because they are reported separately. If a \
 detail is uncertain, leave it out. Set continues_previous to true, with an empty \
 description, when a scene adds nothing new to the one before it, including a brief \
-transition or a return to the same shot.
+transition or a return to the same shot. Small changes in posture, gaze, expression, or \
+framing are not new. Start a new description only when the subject, action, or place changes.
 
 Never identify a real person from their face or voice. Say "a man in uniform", not a name.
 Do not guess intent, and do not judge whether anything is true.
@@ -254,6 +262,11 @@ def to_result(
         if follows and same_setting and (
             item.continues_previous
             or fuzz.token_sort_ratio(descriptions[-1].text, text) >= REPEAT_RATIO
+            or (
+                setting is not None
+                and setting == last_setting
+                and adds_only_minor_detail(descriptions[-1].text, text)
+            )
         ):
             descriptions[-1].end = group[-1].last_seen
             last_scene = item.scene
@@ -327,6 +340,27 @@ def to_result(
 
 _MERGE_CONFIG = Config()
 REPEAT_RATIO = 85
+_FILLER_WORDS = frozenset(
+    "a an and are as at by for from he her his in is it of on or she the their them they "
+    "this to while who with".split()
+)
+# Details that do not make a shot in the same setting meaningfully different.
+_MINOR_DETAIL_WORDS = frozenset(
+    "again briefly continues continuing expression eyes face facing forward gaze gazes "
+    "gesture gestures gesturing glances glancing head keeps leaning leans looking looks "
+    "lowered mouth nods often pauses posture remains shot sits sitting slightly speak "
+    "speaking speaks stands standing still talking talks wearing wears".split()
+)
+
+
+def _words(text: str) -> set[str]:
+    return set(re.findall(r"[a-z]+", text.casefold()))
+
+
+def adds_only_minor_detail(previous: str, current: str) -> bool:
+    """True if a line in the same setting adds nothing beyond posture, gaze, or speech."""
+    new_words = _words(current) - _words(previous) - _FILLER_WORDS - _MINOR_DETAIL_WORDS
+    return bool(_words(current)) and not new_words
 
 
 def parse_analysis(text: str) -> FrameAnalysis:
