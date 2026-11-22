@@ -13,6 +13,19 @@ Most language models can't watch a video. This tool gives them a faithful text v
 
 Use the output as the input to summarisation, search, fact-checking, content moderation, RAG, or your own agents.
 
+## Contents
+
+- [How it works](#how-it-works)
+- [Quick start](#quick-start)
+- [Choosing a vision model](#choosing-a-vision-model)
+- [Usage](#usage)
+- [Use it from AI tools (MCP)](#use-it-from-ai-tools-mcp)
+- [Output](#output)
+- [Troubleshooting](#troubleshooting)
+- [Privacy and responsible use](#privacy-and-responsible-use)
+- [Development](#development)
+- [License](#license)
+
 ## How it works
 
 ```text
@@ -31,37 +44,39 @@ YouTube link or video file
 
 ### 1. Install the requirements
 
-You need **Python 3.12**, **ffmpeg**, and about 5 GB of free disk space.
+You need [uv](https://docs.astral.sh/uv/), **ffmpeg**, and about 5 GB of free disk space. uv installs the right Python version for you.
 
 | System | Install command |
 | --- | --- |
-| macOS | `brew install python@3.12 ffmpeg` |
-| Ubuntu or Debian | `sudo apt install python3.12 python3.12-venv ffmpeg` |
-| Windows | `winget install Python.Python.3.12 Gyan.FFmpeg` |
+| macOS | `brew install uv ffmpeg` |
+| Ubuntu or Debian | `sudo apt install ffmpeg && curl -LsSf https://astral.sh/uv/install.sh \| sh` |
 
-### 2. Download and set up the project
+### 2. Install video-to-context
 
 ```bash
-git clone https://github.com/wani-ham/youtube-shorts-to-text-context.git
-cd youtube-shorts-to-text-context
-python3.12 -m venv .venv
-.venv/bin/pip install -r requirements.txt
-cp .env.example .env
+uv tool install --python 3.12 video-to-context
 ```
 
-On Windows, use `py -3.12 -m venv .venv`, then `.venv\Scripts\pip install -r requirements.txt` and `copy .env.example .env`. Replace `.venv/bin/python` with `.venv\Scripts\python` in the commands below.
+If the command isn't found afterwards, run `uv tool update-shell` and open a new terminal. You can also use `pip install video-to-context` inside a Python 3.12 environment.
 
 ### 3. Choose a vision model (optional)
 
-Open `.env` and uncomment one option from the next section. Without one, the tool still produces the transcript and reads on-screen text locally, but it won't include visual analysis.
+Download the settings template:
+
+```bash
+mkdir -p ~/.video-to-context
+curl -o ~/.video-to-context/.env https://raw.githubusercontent.com/wani-ham/youtube-shorts-to-text-context/main/.env.example
+```
+
+Open `~/.video-to-context/.env` and uncomment one option from the next section. Without one, the tool still produces the transcript and reads on-screen text locally, but it won't include visual analysis.
 
 ### 4. Run it
 
 ```bash
-.venv/bin/python -m pipeline.run "https://www.youtube.com/shorts/VIDEO_ID"
+video-to-context "https://www.youtube.com/shorts/VIDEO_ID"
 ```
 
-The first run is slower because it downloads the speech and OCR models. When it finishes, it prints the path to your result.
+The first run is slower because it downloads the speech and OCR models. When it finishes, it prints the path to your result in a `store/` folder inside your current directory.
 
 ## Choosing a vision model
 
@@ -148,19 +163,19 @@ Model names change often. If one is rejected, check your provider's current mode
 
 ```bash
 # A YouTube video or Short
-.venv/bin/python -m pipeline.run "https://www.youtube.com/shorts/VIDEO_ID"
+video-to-context "https://www.youtube.com/shorts/VIDEO_ID"
 
 # A video file on your computer
-.venv/bin/python -m pipeline.run --file path/to/video.mp4
+video-to-context --file path/to/video.mp4
 
 # A file with details about where it came from
-.venv/bin/python -m pipeline.run --file ad.mp4 --sponsor "Brand" --date 2026-11-02 --caption "Post text"
+video-to-context --file ad.mp4 --sponsor "Brand" --date 2026-11-02 --caption "Post text"
 
 # Process a video again, ignoring the saved result
-.venv/bin/python -m pipeline.run "https://youtu.be/VIDEO_ID" --force
+video-to-context "https://youtu.be/VIDEO_ID" --force
 ```
 
-Videos can be up to 5 minutes and 200 MB. You can change these limits in [pipeline/config.py](pipeline/config.py).
+Videos can be up to 5 minutes and 200 MB. To change these limits, edit [config.py](https://github.com/wani-ham/youtube-shorts-to-text-context/blob/main/video_to_context/config.py) in a source install.
 
 The command exits with `0` for a complete record, `1` for a partial record, and `2` for a rejected input.
 
@@ -168,7 +183,7 @@ The command exits with `0` for a complete record, `1` for a partial record, and 
 
 ```python
 from dotenv import load_dotenv
-from pipeline.run import process
+from video_to_context.run import process
 
 load_dotenv()
 record = process(url="https://www.youtube.com/shorts/VIDEO_ID", out="store")
@@ -181,26 +196,23 @@ print(record.visual_context.summary if record.visual_context else "No visual ana
 
 The included [MCP](https://modelcontextprotocol.io/) server lets AI tools analyse a video when you ask, for example: *"Summarise this Short and tell me what its on-screen text claims."*
 
-Finish the [Quick start](#quick-start) first. The server reads your vision model settings from `.env`.
+Finish the [Quick start](#quick-start) first. The server reads your settings from `~/.video-to-context/.env` and stores results in `~/.video-to-context/store`.
 
 ### Claude Code
 
-Run this from the project folder:
-
 ```bash
-claude mcp add --scope user video-to-text -- "$PWD/.venv/bin/python" "$PWD/mcp_server.py"
+claude mcp add --scope user video-to-text -- "$(command -v video-to-context-mcp)"
 ```
 
 ### Cursor, Claude Desktop, and other clients
 
-Add this to the client's MCP configuration, using absolute paths. For Cursor, that's `~/.cursor/mcp.json`.
+Find the full command path with `command -v video-to-context-mcp`, then add it to the client's MCP configuration. For Cursor, that's `~/.cursor/mcp.json`.
 
 ```json
 {
   "mcpServers": {
     "video-to-text": {
-      "command": "/absolute/path/to/project/.venv/bin/python",
-      "args": ["/absolute/path/to/project/mcp_server.py"]
+      "command": "/absolute/path/to/video-to-context-mcp"
     }
   }
 }
@@ -220,7 +232,7 @@ Videos run one at a time in the background, because processing takes longer than
 
 ### Security
 
-- **Local files are off by default.** To allow them, list specific folders in `VIDEO_TEXT_ALLOWED_DIRS` in `.env`.
+- **Local files are off by default.** To allow them, list specific folders in `VIDEO_TEXT_ALLOWED_DIRS` in `~/.video-to-context/.env`.
 - **URLs are limited to YouTube.**
 - **The server runs locally over stdio** and opens no network port.
 - **Video text is untrusted.** A caption could try to manipulate your AI tool, so be careful when that tool can also run commands or edit files.
@@ -267,11 +279,11 @@ If one stage fails, the others still finish and the record is marked `partial`.
 | What you see | What to do |
 | --- | --- |
 | `fetch_failed` | The video may be private, removed, or age-restricted, or YouTube may be blocking the download. Download limits are stricter on cloud servers. Use `--file` instead. |
-| `vision_not_configured` in `flags` | No vision model is set. Check that `.env` exists and an option is uncommented. |
+| `vision_not_configured` in `flags` | No vision model is set. Check that `~/.video-to-context/.env` exists and an option is uncommented. |
 | `vision_auth_failed` | The API key is wrong or expired. |
 | `vision_invalid_output` | The model didn't return usable JSON. Try a more capable model. |
 | Out of memory with Ollama | Lower `VISION_MAX_FRAMES` or use a smaller model. |
-| MCP tools don't appear | Use absolute paths in the client config, then restart the client. |
+| MCP tools don't appear | Use the full path from `command -v video-to-context-mcp`, then restart the client. |
 | `vision_timeout` | Raise `VISION_TIMEOUT_S`, or set `VISION_REASONING_EFFORT=none`. |
 | `objc: Class AVF... is implemented in both` | A harmless macOS warning from two video libraries. |
 | `ffmpeg` not found | Install ffmpeg (step 1), then open a new terminal. |
@@ -287,11 +299,18 @@ If one stage fails, the others still finish and the record is marked `partial`.
 ## Development
 
 ```bash
-.venv/bin/python -m pytest pipeline/tests
-.venv/bin/python -m pipeline.evaluate
+git clone https://github.com/wani-ham/youtube-shorts-to-text-context.git
+cd youtube-shorts-to-text-context
+python3.12 -m venv .venv
+.venv/bin/pip install -e ".[dev]"
+cp .env.example .env
+.venv/bin/python -m pytest
+.venv/bin/python -m video_to_context.evaluate
 ```
 
-To score accuracy on your own test set, put each video in `pipeline/tests/samples/<name>.mp4` and its hand-written labels in `pipeline/tests/expected/<name>.json`:
+In a source checkout, settings come from the project's `.env`, and the MCP server stores results in the project's `store/` folder.
+
+To score accuracy on your own test set, put each video in `tests/samples/<name>.mp4` and its hand-written labels in `tests/expected/<name>.json`:
 
 ```json
 {"transcript": "…", "on_screen": ["…"], "no_speech": false, "rejected": null}
@@ -299,4 +318,4 @@ To score accuracy on your own test set, put each video in `pipeline/tests/sample
 
 ## License
 
-Licensed under the [Apache License 2.0](LICENSE). See [NOTICE](NOTICE) for copyright details.
+Licensed under the [Apache License 2.0](https://github.com/wani-ham/youtube-shorts-to-text-context/blob/main/LICENSE). See [NOTICE](https://github.com/wani-ham/youtube-shorts-to-text-context/blob/main/NOTICE) for copyright details.

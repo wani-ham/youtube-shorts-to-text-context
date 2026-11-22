@@ -11,8 +11,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable
 
-from dotenv import load_dotenv
-
 from . import __version__, audio, vision, visual
 from .config import DEFAULT_CONFIG, Config
 from .fetch import fetch
@@ -21,6 +19,7 @@ from .merge import build_llm_document, write_markdown, write_record
 from .models import (
     STAGES, Media, PipelineError, PipelineInfo, RecordError, Source, TextRecord,
 )
+from .paths import load_settings
 from .probe import normalise, probe
 
 
@@ -215,8 +214,11 @@ def process(
 
 
 def main(argv: list[str] | None = None) -> int:
-    load_dotenv(Path.cwd() / ".env")  # Real environment variables take priority.
-    parser = argparse.ArgumentParser(description="Turn a short video into a text record.")
+    load_settings()
+    parser = argparse.ArgumentParser(
+        prog="video-to-context", description="Turn a short video into a text record."
+    )
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("link", nargs="?", help="public YouTube video or Short")
     group.add_argument("--url", help="same as giving the link directly")

@@ -1,0 +1,65 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "video-to-context"
+dynamic = ["version"]
+description = "Turn short videos into structured, timestamped text for LLMs: speech, on-screen text, and visual context."
+readme = "README.md"
+requires-python = ">=3.12"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+authors = [{ name = "Taewan Ham" }]
+keywords = ["video-to-text", "youtube-shorts", "speech-to-text", "ocr", "llm", "rag", "mcp", "whisper", "multimodal"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Multimedia :: Video",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "yt-dlp>=2026.10.26",
+    "faster-whisper>=1.2.1,<2",
+    "scenedetect>=0.7.3,<0.8",
+    "easyocr>=1.7.2,<2",
+    "torch>=2.15,<3",
+    "numpy>=2.5,<3",
+    "ImageHash>=4.3.2,<5",
+    "pillow>=13,<14",
+    "rapidfuzz>=3.14,<4",
+    "pydantic>=2.14,<3",
+    "anthropic>=2.12,<3",
+    "openai>=3.57,<4",
+    "python-dotenv>=1.2,<2",
+    "mcp>=2.3,<3",
+]
+
+[project.optional-dependencies]
+dev = ["jiwer>=4,<5", "pytest>=9,<10"]
+
+[project.scripts]
+video-to-context = "video_to_context.run:main"
+video-to-context-mcp = "video_to_context.mcp_server:main"
+
+[project.urls]
+Homepage = "https://github.com/wani-ham/youtube-shorts-to-text-context"
+Repository = "https://github.com/wani-ham/youtube-shorts-to-text-context"
+Issues = "https://github.com/wani-ham/youtube-shorts-to-text-context/issues"
+
+[tool.hatch.version]
+path = "video_to_context/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["video_to_context"]
+
+[tool.hatch.build.targets.sdist]
+include = ["video_to_context", "tests/*.py", "README.md", "LICENSE", "NOTICE", ".env.example", "requirements.txt"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

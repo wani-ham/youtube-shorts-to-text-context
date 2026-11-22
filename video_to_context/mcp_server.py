@@ -22,13 +22,12 @@ from pathlib import Path
 from typing import Any, Literal
 from urllib.parse import urlparse
 
-from dotenv import load_dotenv
 from mcp.server.mcpserver import MCPServer
 from mcp.types import ToolAnnotations
 
 from . import __version__
+from .paths import PACKAGE_PARENT, app_dir, load_settings
 
-ROOT = Path(__file__).resolve().parent.parent
 MEDIA_ID = re.compile(r"(?:sha256:)?([0-9a-f]{64})")
 JOB_TIMEOUT_S = 1800
 MAX_PENDING_JOBS = 10
@@ -40,7 +39,7 @@ EXTRA_PATHS = ("/opt/homebrew/bin", "/usr/local/bin")
 
 def store_dir() -> Path:
     configured = os.environ.get("VIDEO_TEXT_STORE", "").strip()
-    return Path(configured).expanduser().resolve() if configured else ROOT / "store"
+    return Path(configured).expanduser().resolve() if configured else app_dir() / "store"
 
 
 def allowed_dirs() -> list[Path]:
@@ -118,7 +117,7 @@ class JobManager:
         self, store: Path, command: list[str] | None = None, timeout_s: float = JOB_TIMEOUT_S
     ):
         self.store = store
-        self.command = command or [sys.executable, "-m", "pipeline.run"]
+        self.command = command or [sys.executable, "-m", "video_to_context.run"]
         self.timeout_s = timeout_s
         self.jobs: dict[str, Job] = {}
         self._queue: queue.Queue[Job | None] = queue.Queue()
@@ -159,10 +158,17 @@ class JobManager:
             job.finished_at = time.time()
 
     def _run(self, job: Job) -> None:
-        env = {**os.environ, "PATH": child_path()}
+        self.store.mkdir(parents=True, exist_ok=True)
+        # A checkout may not be installed, so keep the package importable from any folder.
+        python_path = [str(PACKAGE_PARENT), os.environ.get("PYTHONPATH", "")]
+        env = {
+            **os.environ,
+            "PATH": child_path(),
+            "PYTHONPATH": os.pathsep.join(part for part in python_path if part),
+        }
         process = subprocess.Popen(
             [*self.command, *job.args, "--out", str(self.store)],
-            cwd=ROOT,
+            cwd=self.store,
             env=env,
             stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE,
@@ -390,7 +396,7 @@ def check_setup() -> dict[str, Any]:
 
 
 def main() -> None:
-    load_dotenv(ROOT / ".env")  # Real environment variables take priority.
+    load_settings()
 
     def stop(*_: Any) -> None:
         if _manager is not None:

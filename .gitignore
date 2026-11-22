@@ -26,8 +26,8 @@ htmlcov/
 # Pipeline output and input media
 store/
 data/
-pipeline/tests/samples/*
-!pipeline/tests/samples/.gitkeep
+tests/samples/*
+!tests/samples/.gitkeep
 *.mp4
 *.mov
 *.mkv

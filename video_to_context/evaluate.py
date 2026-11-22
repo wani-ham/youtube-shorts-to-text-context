@@ -17,7 +17,7 @@ from rapidfuzz import fuzz
 from .models import PipelineError
 from .run import process
 
-ROOT = Path(__file__).parent / "tests"
+ROOT = Path("tests")
 
 
 def normalise(text: str) -> str:

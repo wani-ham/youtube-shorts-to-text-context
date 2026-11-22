@@ -5,15 +5,15 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from pipeline import audio, run, vision, visual
-from pipeline.config import DEFAULT_CONFIG as CONFIG
-from pipeline.fetch import normalise_url
-from pipeline.merge import build_llm_document, build_markdown
-from pipeline.models import (
+from video_to_context import audio, run, vision, visual
+from video_to_context.config import DEFAULT_CONFIG as CONFIG
+from video_to_context.fetch import normalise_url
+from video_to_context.merge import build_llm_document, build_markdown
+from video_to_context.models import (
     Media, OnScreenText, PipelineError, PipelineInfo, Source, TextRecord, Transcript,
     TimeRange, TranscriptSegment, VisualContext, VisualDescription, VisualSetting,
 )
-from pipeline.probe import probe
+from video_to_context.probe import probe
 
 
 def make_video(path: Path, seconds: int = 2, with_audio: bool = True) -> Path:

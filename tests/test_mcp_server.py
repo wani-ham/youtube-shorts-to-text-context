@@ -8,7 +8,7 @@ import anyio
 import pytest
 from mcp import Client
 
-from pipeline import mcp_server as app
+from video_to_context import mcp_server as app
 
 HEX = "a" * 64
 
