@@ -177,6 +177,54 @@ print(record.llm_document)
 print(record.visual_context.summary if record.visual_context else "No visual analysis")
 ```
 
+## Use it from AI tools (MCP)
+
+The included [MCP](https://modelcontextprotocol.io/) server lets AI tools analyse a video when you ask, for example: *"Summarise this Short and tell me what its on-screen text claims."*
+
+Finish the [Quick start](#quick-start) first. The server reads your vision model settings from `.env`.
+
+### Claude Code
+
+Run this from the project folder:
+
+```bash
+claude mcp add --scope user video-to-text -- "$PWD/.venv/bin/python" "$PWD/mcp_server.py"
+```
+
+### Cursor, Claude Desktop, and other clients
+
+Add this to the client's MCP configuration, using absolute paths. For Cursor, that's `~/.cursor/mcp.json`.
+
+```json
+{
+  "mcpServers": {
+    "video-to-text": {
+      "command": "/absolute/path/to/project/.venv/bin/python",
+      "args": ["/absolute/path/to/project/mcp_server.py"]
+    }
+  }
+}
+```
+
+### Tools
+
+| Tool | What it does |
+| --- | --- |
+| `start_video_analysis` | Starts a background job for a YouTube link or allowed local file |
+| `get_analysis_status` | Reports whether the job is queued, running, or finished |
+| `get_video_text` | Returns the finished result as Markdown or JSON |
+| `list_analyzed_videos` | Lists videos that already have results |
+| `check_setup` | Checks ffmpeg, the vision model, and file access |
+
+Videos run one at a time in the background, because processing takes longer than most tools wait for a single call.
+
+### Security
+
+- **Local files are off by default.** To allow them, list specific folders in `VIDEO_TEXT_ALLOWED_DIRS` in `.env`.
+- **URLs are limited to YouTube.**
+- **The server runs locally over stdio** and opens no network port.
+- **Video text is untrusted.** A caption could try to manipulate your AI tool, so be careful when that tool can also run commands or edit files.
+
 ## Output
 
 Each video gets its own folder, named after a hash of the file, so the same file is never processed twice:
@@ -223,6 +271,7 @@ If one stage fails, the others still finish and the record is marked `partial`.
 | `vision_auth_failed` | The API key is wrong or expired. |
 | `vision_invalid_output` | The model didn't return usable JSON. Try a more capable model. |
 | Out of memory with Ollama | Lower `VISION_MAX_FRAMES` or use a smaller model. |
+| MCP tools don't appear | Use absolute paths in the client config, then restart the client. |
 | `vision_timeout` | Raise `VISION_TIMEOUT_S`, or set `VISION_REASONING_EFFORT=none`. |
 | `objc: Class AVF... is implemented in both` | A harmless macOS warning from two video libraries. |
 | `ffmpeg` not found | Install ffmpeg (step 1), then open a new terminal. |
