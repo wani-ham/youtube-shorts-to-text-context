@@ -1,0 +1,55 @@
+# Python environments
+.venv/
+venv/
+env/
+.conda/
+
+# Python build and cache files
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.ipynb_checkpoints/
+
+# Secrets and local settings
+.env
+.env.*
+!.env.example
+.claude/settings.local.json
+
+# Pipeline output and input media
+store/
+data/
+pipeline/tests/samples/*
+!pipeline/tests/samples/.gitkeep
+*.mp4
+*.mov
+*.mkv
+*.webm
+*.m4a
+*.wav
+*.mp3
+
+# Downloaded model weights
+*.pt
+*.pth
+*.onnx
+*.safetensors
+*.gguf
+
+# Logs and temporary files
+*.log
+*.tmp
+
+# Editors and operating systems
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db

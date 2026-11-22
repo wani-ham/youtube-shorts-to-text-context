@@ -1,0 +1,23 @@
+# System dependency: ffmpeg (includes ffprobe)
+yt-dlp==2026.10.26
+faster-whisper==1.2.1
+ctranslate2==4.9.0
+av==19.0.2
+scenedetect==0.7.3
+opencv-python==5.1.0.95
+opencv-python-headless==5.1.0.95
+easyocr==1.7.2
+torch==2.15.0
+torchvision==0.29.2
+numpy==2.5.5
+ImageHash==4.3.2
+pillow==13.0.0
+rapidfuzz==3.14.6
+pydantic==2.14.4
+anthropic==2.12.0
+openai==3.57.0
+python-dotenv==1.2.4
+
+# Evaluation and tests
+jiwer==4.0.0
+pytest==9.2.0
