@@ -7,7 +7,7 @@ name = "video-to-context"
 dynamic = ["version"]
 description = "Turn short videos into structured, timestamped text for LLMs: speech, on-screen text, and visual context."
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.12,<3.15"
 license = "Apache-2.0"
 license-files = ["LICENSE", "NOTICE"]
 authors = [{ name = "Taewan Ham" }]

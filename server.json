@@ -7,12 +7,12 @@
     "url": "https://github.com/wani-ham/youtube-shorts-to-text-context",
     "source": "github"
   },
-  "version": "0.5.2",
+  "version": "0.5.3",
   "packages": [
     {
       "registryType": "pypi",
       "identifier": "video-to-context",
-      "version": "0.5.2",
+      "version": "0.5.3",
       "runtimeHint": "uvx",
       "transport": { "type": "stdio" },
       "packageArguments": [
