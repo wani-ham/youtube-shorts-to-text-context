@@ -73,10 +73,10 @@ You don't need Claude. Any service with an OpenAI-compatible API and image suppo
 | **Gemini** | Free tier available | Google | Trying it at no cost |
 | **OpenAI** | Paid | OpenAI | Existing OpenAI users |
 | **OpenRouter** | Free and paid models | The selected provider | Comparing models |
-| **Ollama** | Free | **Nowhere, runs locally** | Privacy, no account |
+| **Ollama** | Free | **Nowhere, runs locally** | Private text extraction, no account |
 | **None** | Free | Nowhere | Transcript and text only |
 
-> **Status:** the Claude path has been tested on real videos. The other options use the same OpenAI-compatible connection, which has only been tested against a mock server, so results may vary by model.
+> **Status:** Claude has been tested on real videos. Ollama with Gemma 4 12B has been tested on one real video: it read on-screen text well, but its scene descriptions were unreliable. Gemini, OpenAI, and OpenRouter use the same connection as Ollama but haven't been tested with their real services.
 
 ### Claude
 
@@ -116,19 +116,31 @@ VISION_MODEL=provider/model-name
 
 ### Ollama (free and local)
 
-Install [Ollama](https://ollama.com/), then download a vision model. Allow about 8 GB of disk space and at least 16 GB of memory.
+Install [Ollama](https://ollama.com/), then download a vision model. Allow about 8 GB of disk space and at least 16 GB of memory, and close other heavy apps.
 
 ```bash
 ollama pull gemma4:12b
 ```
 
+Start Ollama with a larger context. Its default is too small for this prompt and the images:
+
+```bash
+OLLAMA_CONTEXT_LENGTH=16384 ollama serve
+```
+
+If Ollama is already running in the background, quit it first. Then add this to `.env`:
+
 ```bash
 VISION_BASE_URL=http://localhost:11434/v1
 VISION_MODEL=gemma4:12b
 VISION_MAX_FRAMES=12
+VISION_REASONING_EFFORT=none
+VISION_TIMEOUT_S=600
 ```
 
-`VISION_MAX_FRAMES` limits how many images are sent per video. Lower it if a local model runs out of memory or a free tier rejects the request.
+- `VISION_MAX_FRAMES` limits how many images are sent per video. Fewer frames use less memory but can miss short captions.
+- `VISION_REASONING_EFFORT=none` turns off model thinking. On a 16 GB Apple Silicon Mac, one request took about 78 seconds this way and about 250 seconds with thinking, which gave somewhat better scene descriptions.
+- `VISION_TIMEOUT_S` gives slower local models enough time to answer.
 
 Model names change often. If one is rejected, check your provider's current model list.
 
@@ -211,6 +223,7 @@ If one stage fails, the others still finish and the record is marked `partial`.
 | `vision_auth_failed` | The API key is wrong or expired. |
 | `vision_invalid_output` | The model didn't return usable JSON. Try a more capable model. |
 | Out of memory with Ollama | Lower `VISION_MAX_FRAMES` or use a smaller model. |
+| `vision_timeout` | Raise `VISION_TIMEOUT_S`, or set `VISION_REASONING_EFFORT=none`. |
 | `objc: Class AVF... is implemented in both` | A harmless macOS warning from two video libraries. |
 | `ffmpeg` not found | Install ffmpeg (step 1), then open a new terminal. |
 | It's slow | Speech-to-text runs on CPU unless you have an NVIDIA GPU. Expect a few minutes for a 2-minute video. |

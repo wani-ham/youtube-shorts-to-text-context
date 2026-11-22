@@ -383,6 +383,15 @@ def _call_claude(content: list[dict], model: str, max_tokens: int, config: Confi
     return response.parsed_output
 
 
+def _timeout(config: Config) -> float:
+    value = os.environ.get("VISION_TIMEOUT_S", "").strip()
+    if not value:
+        return config.vision_timeout_s
+    if not value.isdigit() or int(value) < 1:
+        raise PipelineError("vision_bad_config", "VISION_TIMEOUT_S must be a positive number.")
+    return float(value)
+
+
 def _call_openai_compatible(
     content: list[dict], model: str, base_url: str, config: Config
 ) -> FrameAnalysis:
@@ -394,8 +403,8 @@ def _call_openai_compatible(
         base_url=base_url,
         # Local servers such as Ollama need a value here but ignore it.
         api_key=os.environ.get("VISION_API_KEY", "").strip() or "not-needed",
-        timeout=config.vision_timeout_s,
-        max_retries=2,
+        timeout=_timeout(config),
+        max_retries=1,
     )
     request = {
         "model": model,
@@ -404,30 +413,47 @@ def _call_openai_compatible(
             {"role": "user", "content": _to_openai_content(content)},
         ],
     }
-    try:
-        try:
-            response = client.chat.completions.create(
-                **request, response_format={"type": "json_object"}
-            )
-        except openai.BadRequestError:  # Not every server supports JSON mode.
-            response = client.chat.completions.create(**request)
-    except openai.AuthenticationError as exc:
-        raise PipelineError("vision_auth_failed", "The vision API key was rejected.") from exc
-    except openai.RateLimitError as exc:
-        raise PipelineError("vision_rate_limited", "The vision rate limit was hit.") from exc
-    except openai.APIStatusError as exc:
-        raise PipelineError("vision_api_error", f"Vision API error: {exc.message}") from exc
-    except openai.APIConnectionError as exc:
-        raise PipelineError(
-            "vision_connection_failed", "Could not reach the vision endpoint."
-        ) from exc
+    if effort := os.environ.get("VISION_REASONING_EFFORT", "").strip():
+        request["reasoning_effort"] = effort
 
-    if not response.choices:
-        raise PipelineError("vision_incomplete", "The model returned no answer.")
-    choice = response.choices[0]
-    if choice.finish_reason == "length":
-        raise PipelineError("vision_incomplete", "The model returned an incomplete answer.")
-    return parse_analysis(choice.message.content or "")
+    use_json_mode = True
+    for attempt in range(2):  # Smaller models occasionally return malformed JSON.
+        try:
+            try:
+                extra = {"response_format": {"type": "json_object"}} if use_json_mode else {}
+                response = client.chat.completions.create(**request, **extra)
+            except openai.APIStatusError as exc:
+                # Servers reject an unsupported JSON mode in different ways.
+                if not use_json_mode or exc.status_code not in {400, 422, 501}:
+                    raise
+                use_json_mode = False
+                response = client.chat.completions.create(**request)
+        except openai.AuthenticationError as exc:
+            raise PipelineError("vision_auth_failed", "The vision API key was rejected.") from exc
+        except openai.RateLimitError as exc:
+            raise PipelineError("vision_rate_limited", "The vision rate limit was hit.") from exc
+        except openai.APIStatusError as exc:
+            raise PipelineError("vision_api_error", f"Vision API error: {exc.message}") from exc
+        except openai.APITimeoutError as exc:
+            raise PipelineError(
+                "vision_timeout", "The vision model timed out. Raise VISION_TIMEOUT_S."
+            ) from exc
+        except openai.APIConnectionError as exc:
+            raise PipelineError(
+                "vision_connection_failed", "Could not reach the vision endpoint."
+            ) from exc
+
+        if not response.choices:
+            raise PipelineError("vision_incomplete", "The model returned no answer.")
+        choice = response.choices[0]
+        if choice.finish_reason == "length":
+            raise PipelineError("vision_incomplete", "The model returned an incomplete answer.")
+        try:
+            return parse_analysis(choice.message.content or "")
+        except PipelineError:
+            if attempt == 1:
+                raise
+    raise PipelineError("vision_invalid_output", "The model did not return valid JSON.")
 
 
 def analyze_frames(samples: list[Sample], work_dir: Path, config: Config) -> VisionResult:

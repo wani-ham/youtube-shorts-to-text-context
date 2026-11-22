@@ -369,6 +369,52 @@ def test_thin_samples_keeps_full_time_range():
     assert vision.thin_samples(samples, 90) is samples
 
 
+def test_compatible_endpoint_retries_without_json_mode_on_501(monkeypatch):
+    import httpx2
+    import openai
+
+    payload = ('{"visual_summary":"s","footage_type":"unclear","footage_basis":"b",'
+               '"source_footage":"unclear","settings":[],"editing_techniques":[],'
+               '"editing_notes":"","overlays":[],"captions":[],"scenes":[]}')
+    calls = []
+
+    class Completions:
+        def create(self, **request):
+            calls.append("response_format" in request)
+            if "response_format" in request:
+                response = httpx2.Response(
+                    501, request=httpx2.Request("POST", "http://local/v1/chat/completions"))
+                raise openai.APIStatusError("unavailable", response=response, body=None)
+            message = type("Message", (), {"content": payload})
+            choice = type("Choice", (), {"finish_reason": "stop", "message": message})
+            return type("Response", (), {"choices": [choice]})
+
+    client = type("Client", (), {"chat": type("Chat", (), {"completions": Completions()})})
+    monkeypatch.setattr(openai, "OpenAI", lambda **_: client)
+    result = vision._call_openai_compatible([], "model", "http://local/v1", CONFIG)
+    assert result.visual_summary == "s" and calls == [True, False]
+
+
+def test_compatible_endpoint_retries_malformed_answer_once(monkeypatch):
+    import openai
+
+    payload = ('{"visual_summary":"s","footage_type":"unclear","footage_basis":"b",'
+               '"source_footage":"unclear","settings":[],"editing_techniques":[],'
+               '"editing_notes":"","overlays":[],"captions":[],"scenes":[]}')
+    answers = ['{"visual_summary": "broken"}', payload]
+
+    class Completions:
+        def create(self, **_):
+            message = type("Message", (), {"content": answers.pop(0)})
+            choice = type("Choice", (), {"finish_reason": "stop", "message": message})
+            return type("Response", (), {"choices": [choice]})
+
+    client = type("Client", (), {"chat": type("Chat", (), {"completions": Completions()})})
+    monkeypatch.setattr(openai, "OpenAI", lambda **_: client)
+    assert vision._call_openai_compatible([], "m", "http://local/v1", CONFIG).visual_summary == "s"
+    assert answers == []
+
+
 def test_compatible_endpoint_needs_a_model_name(tmp_path, monkeypatch):
     monkeypatch.setenv("VISION_BASE_URL", "http://localhost:1/v1")
     monkeypatch.delenv("VISION_MODEL", raising=False)
