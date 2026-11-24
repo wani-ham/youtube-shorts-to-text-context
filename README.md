@@ -2,6 +2,8 @@
 
 <!-- mcp-name: io.github.wani-ham/video-to-context -->
 
+[![wani-ham/youtube-shorts-to-text-context MCP server](https://glama.ai/mcp/servers/wani-ham/youtube-shorts-to-text-context/badges/score.svg)](https://glama.ai/mcp/servers/wani-ham/youtube-shorts-to-text-context)
+
 Turn a short-form Youtube video into structured, timestamped context in a text format. It includes both audio and visual context.
 
 Most language models can't watch a video. This tool gives them a faithful text version of one: what was **said**, what was **written on screen**, and what was **shown**, with every item labelled by source and time.
